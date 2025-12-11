@@ -1,4 +1,4 @@
-name: Build
+name: Build and Deploy to Cloudflare Pages # 更改名称以反映部署操作
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
 
 jobs:
 
-  build:
-    name: Build
+  build_and_deploy: # 更改 Job 名称
+    name: Build and Deploy
     runs-on: ubuntu-latest
 
     strategy:
@@ -22,12 +22,33 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    # 注意：您的日志显示使用 bun，但您的 YAML 使用 yarn。我继续使用 yarn。
     - name: Get dependencies and build
       run: |
         yarn install
         yarn build
 
-    - name: Upload
+    # --- 新增的部署步骤 ---
+    # 步骤 1：部署到 Cloudflare Pages
+    # 官方推荐使用 Cloudflare Pages Action，它会处理 Wrangler 的依赖和部署
+    - name: Publish to Cloudflare Pages
+      uses: cloudflare/pages-action@v1 # 使用官方 Action
+      with:
+        # 您需要将这个 Token 设置为 GitHub Actions Secrets，
+        # 并在 Cloudflare Pages 项目设置中生成它（具有 Pages 部署权限）
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }} 
+        # Account ID，可以在 Cloudflare 仪表板中找到
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }} 
+        # 构建输出目录
+        directory: dist 
+        # 部署到的 Pages 项目名称
+        projectName: sub-web 
+        # 确保在 CI 环境中能够部署
+        gitDir: . 
+    # -----------------------
+
+    # 保留上传 Artifacts 的步骤 (可选)
+    - name: Upload Build Artifact (Optional)
       uses: actions/upload-artifact@v4
       with:
         name: dist
